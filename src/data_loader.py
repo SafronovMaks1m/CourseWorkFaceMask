@@ -3,9 +3,7 @@ import matplotlib.pyplot as plt
 from .config import TRAIN_DIR, VAL_DIR, TEST_DIR
 
 def analyze_dataset():
-    """
-    Проверяет количество изображений в классах и строит график распределения.
-    """
+
     categories = ['WithMask', 'WithoutMask']
     dirs = {'Train': TRAIN_DIR, 'Validation': VAL_DIR, 'Test': TEST_DIR}
     
@@ -25,8 +23,7 @@ def analyze_dataset():
             stats[split_name].append(count)
             print(f"[{split_name}] {category}: {count} изображений")
 
-    # Визуализация баланса классов (для отчета)
-    # Если нужно показать преподавателю - раскомментируй plt.show()
+
     labels = categories
     x = range(len(labels))
     

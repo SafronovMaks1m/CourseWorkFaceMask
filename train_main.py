@@ -17,9 +17,8 @@ def load_data_for_classical(directory):
     print(f"Загрузка данных для ML из {directory}...")
     features = []
     labels = []
-    categories = ['WithMask', 'WithoutMask'] # 0 - WithMask (ошибка логики в реф. коде), сделаем 1 - WithMask
-    
-    # Сделаем: WithoutMask = 0, WithMask = 1
+    categories = ['WithMask', 'WithoutMask']
+
     for category in categories:
         path = os.path.join(directory, category)
         class_num = 1 if category == 'WithMask' else 0
@@ -43,10 +42,8 @@ def load_data_for_classical(directory):
     return np.array(features), np.array(labels)
 
 def train_all():
-    # 1. Анализ данных
     analyze_dataset()
-    
-    # 2. Обучение Классической модели (HOG + Random Forest)
+
     print("\n--- Обучение Модели 1: HOG + Random Forest ---")
     X_train, y_train = load_data_for_classical(TRAIN_DIR)
     X_val, y_val = load_data_for_classical(VAL_DIR)
@@ -57,8 +54,7 @@ def train_all():
     acc = rf_model.score(X_val, y_val)
     print(f"Classical Model Accuracy: {acc:.4f}")
     joblib.dump(rf_model, os.path.join(MODELS_DIR, 'classical_rf.pkl'))
-    
-    # Подготовка генераторов для нейросетей
+
     train_datagen = ImageDataGenerator(rescale=1./255, rotation_range=20, horizontal_flip=True)
     val_datagen = ImageDataGenerator(rescale=1./255)
     
@@ -66,8 +62,7 @@ def train_all():
         TRAIN_DIR, target_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE, class_mode='binary')
     val_gen = val_datagen.flow_from_directory(
         VAL_DIR, target_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE, class_mode='binary')
-    
-    # 3. Обучение CNN
+
     print("\n--- Обучение Модели 2: Simple CNN ---")
     cnn = create_simple_cnn((IMG_SIZE, IMG_SIZE, 3))
     cnn.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
@@ -76,7 +71,6 @@ def train_all():
     cnn.save(os.path.join(MODELS_DIR, 'simple_cnn.keras'))
     print("CNN сохранена.")
 
-    # 4. Обучение Transfer Learning
     print("\n--- Обучение Модели 3: MobileNetV2 ---")
     mobilenet = create_transfer_model((IMG_SIZE, IMG_SIZE, 3))
     mobilenet.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
