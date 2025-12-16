@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+dataset/
+models_saved/*.keras
+models_saved/*.pkl
+*.png

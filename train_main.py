@@ -1,0 +1,89 @@
+import os
+import cv2
+import numpy as np
+import joblib
+import tensorflow as tf
+from skimage.feature import hog
+
+from src.config import *
+from src.data_loader import analyze_dataset
+from src.models import create_classical_model, create_simple_cnn, create_transfer_model
+
+ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
+Adam = tf.keras.optimizers.Adam
+
+def load_data_for_classical(directory):
+    """Загрузка данных и превращение их в векторы HOG для классического ML"""
+    print(f"Загрузка данных для ML из {directory}...")
+    features = []
+    labels = []
+    categories = ['WithMask', 'WithoutMask'] # 0 - WithMask (ошибка логики в реф. коде), сделаем 1 - WithMask
+    
+    # Сделаем: WithoutMask = 0, WithMask = 1
+    for category in categories:
+        path = os.path.join(directory, category)
+        class_num = 1 if category == 'WithMask' else 0
+        
+        for img_name in os.listdir(path):
+            try:
+                img_path = os.path.join(path, img_name)
+                img = cv2.imread(img_path)
+                if img is None: continue
+                
+                # Используем логику из HOG
+                img_resized = cv2.resize(img, (HOG_IMG_SIZE, HOG_IMG_SIZE))
+                gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
+                hog_vec = hog(gray, orientations=9, pixels_per_cell=(8, 8),
+                              cells_per_block=(2, 2), block_norm='L2-Hys', transform_sqrt=True)
+                
+                features.append(hog_vec)
+                labels.append(class_num)
+            except Exception as e:
+                pass
+    return np.array(features), np.array(labels)
+
+def train_all():
+    # 1. Анализ данных
+    analyze_dataset()
+    
+    # 2. Обучение Классической модели (HOG + Random Forest)
+    print("\n--- Обучение Модели 1: HOG + Random Forest ---")
+    X_train, y_train = load_data_for_classical(TRAIN_DIR)
+    X_val, y_val = load_data_for_classical(VAL_DIR)
+    
+    rf_model = create_classical_model()
+    rf_model.fit(X_train, y_train)
+    
+    acc = rf_model.score(X_val, y_val)
+    print(f"Classical Model Accuracy: {acc:.4f}")
+    joblib.dump(rf_model, os.path.join(MODELS_DIR, 'classical_rf.pkl'))
+    
+    # Подготовка генераторов для нейросетей
+    train_datagen = ImageDataGenerator(rescale=1./255, rotation_range=20, horizontal_flip=True)
+    val_datagen = ImageDataGenerator(rescale=1./255)
+    
+    train_gen = train_datagen.flow_from_directory(
+        TRAIN_DIR, target_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE, class_mode='binary')
+    val_gen = val_datagen.flow_from_directory(
+        VAL_DIR, target_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE, class_mode='binary')
+    
+    # 3. Обучение CNN
+    print("\n--- Обучение Модели 2: Simple CNN ---")
+    cnn = create_simple_cnn((IMG_SIZE, IMG_SIZE, 3))
+    cnn.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+    
+    cnn.fit(train_gen, epochs=EPOCHS, validation_data=val_gen)
+    cnn.save(os.path.join(MODELS_DIR, 'simple_cnn.keras'))
+    print("CNN сохранена.")
+
+    # 4. Обучение Transfer Learning
+    print("\n--- Обучение Модели 3: MobileNetV2 ---")
+    mobilenet = create_transfer_model((IMG_SIZE, IMG_SIZE, 3))
+    mobilenet.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+    
+    mobilenet.fit(train_gen, epochs=EPOCHS, validation_data=val_gen)
+    mobilenet.save(os.path.join(MODELS_DIR, 'mobilenet.keras'))
+    print("MobileNet сохранена.")
+
+if __name__ == "__main__":
+    train_all()
