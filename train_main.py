@@ -13,7 +13,6 @@ ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 Adam = tf.keras.optimizers.Adam
 
 def load_data_for_classical(directory):
-    """Загрузка данных и превращение их в векторы HOG для классического ML"""
     print(f"Загрузка данных для ML из {directory}...")
     features = []
     labels = []
@@ -28,8 +27,7 @@ def load_data_for_classical(directory):
                 img_path = os.path.join(path, img_name)
                 img = cv2.imread(img_path)
                 if img is None: continue
-                
-                # Используем логику из HOG
+
                 img_resized = cv2.resize(img, (HOG_IMG_SIZE, HOG_IMG_SIZE))
                 gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
                 hog_vec = hog(gray, orientations=9, pixels_per_cell=(8, 8),

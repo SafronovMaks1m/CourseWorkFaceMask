@@ -13,4 +13,4 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 IMG_SIZE = 128
 HOG_IMG_SIZE = 64
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 100
